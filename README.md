@@ -30,9 +30,8 @@ A simple RESTful API for managing books and user authentication. This project is
 
 ## **🚀 Getting Started**
 ### **1️⃣ Clone the Repository**
-```bash
+```bash[
 git clone https://github.com/your-username/book-management-api.git
-cd book-management-api
 ```
 
 ### **2️⃣ Install Dependencies**
