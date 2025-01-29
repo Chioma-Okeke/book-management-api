@@ -24,13 +24,17 @@ const get_A_books = async (req, res, next) => {
 };
 
 async function publish_A_book(req, res, next) {
-    const paramId = req.params.id;
+    const userId = req.user;
+
     try {
-        const user = await userModel.findById(paramId);
+        const user = await userModel.findById(userId);
         if (!user) {
-            return res.status(404).json({ msg: "user not found" });
+            return res
+                .status(404)
+                .json({ msg: "You need to login to publish a book" });
         }
-        const newBook = new bookModel({ ...req.body, userId: paramId });
+
+        const newBook = new bookModel({ ...req.body, userId: userId._id });
         const createdBook = await newBook.save();
         user.publications.push(createdBook._id);
         await user.save();
@@ -41,13 +45,24 @@ async function publish_A_book(req, res, next) {
 }
 
 async function update_A_book(req, res, next) {
-    const { id } = req.params;
+    const userInfo = req.user;
     const update = req.body;
+    const { id } = req.params;
+
+    if (!userInfo.publications.includes(id)) {
+        return res
+            .status(401)
+            .json({ msg: "You can only edit books created by you" });
+    }
     try {
-        const bookUpdated = await bookModel.findByIdAndUpdate(id, update, {
-            new: true,
-            runValidators: true,
-        });
+        const bookUpdated = await bookModel.findByIdAndUpdate(
+            id,
+            update,
+            {
+                new: true,
+                runValidators: true,
+            }
+        );
         if (!bookUpdated) {
             throw new Error({ status: 404 });
         }
@@ -59,6 +74,12 @@ async function update_A_book(req, res, next) {
 
 async function delete_A_book(req, res, next) {
     const { id } = req.params;
+    const userInfo = req.user
+
+    if (!userInfo.publications.includes(id)) {
+        return res.status(401).json({msg: "You can only delete books created by you"})
+    }
+    
     try {
         await bookModel.findByIdAndDelete(id);
         res.status(200).json({ msg: "Book deleted" });

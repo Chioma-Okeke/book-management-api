@@ -6,15 +6,15 @@ const {
     update_A_book,
     delete_A_book,
 } = require("../controller/bookController");
+const authMiddleware = require("../Middleware/authMiddleware");
 
-const router = Router();
+const router = Router()
+    .get("/book/:id", authMiddleware, get_A_books)
+    .get("/books", authMiddleware, get_All_books)
 
-router.get("/book/:id", get_A_books);
-router.get("/books", get_All_books);
+    .post("/book/", authMiddleware, publish_A_book)
+    .put("/book/:id", authMiddleware, update_A_book)
 
-router.post("/book/:id", publish_A_book);
-router.put("/book/:id", update_A_book);
-
-router.delete("/book/:id", delete_A_book);
+    .delete("/book/:id", authMiddleware, delete_A_book);
 
 module.exports = router;

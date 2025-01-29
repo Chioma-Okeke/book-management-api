@@ -1,8 +1,14 @@
+const generateToken = require("../jwt/tokengeneration");
 const userModel = require("../model/userModel");
 const bcrypt = require("bcryptjs");
 
 const signup = async (req, res, next) => {
-    const { password, email } = req.body;
+    const { password, email, username } = req.body;
+
+    if (!username || !password || !email) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
     try {
         const user = await userModel.findOne({ email });
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -12,12 +18,15 @@ const signup = async (req, res, next) => {
         if (!emailRegex.test(email)) {
             return res.json("Invalid email address").status(400);
         }
+
         const salt = bcrypt.genSaltSync(10);
         const hashedPassword = bcrypt.hashSync(password, salt);
+
         const newUser = new userModel({
             ...req.body,
             password: hashedPassword,
         });
+
         await newUser.save();
         res.status(200).json(newUser);
     } catch (error) {
@@ -26,24 +35,49 @@ const signup = async (req, res, next) => {
 };
 
 const login = async (req, res, next) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
+
     try {
-        const user = await userModel.findOne({ username });
+        const user = await userModel.findOne({ email });
         if (!user) {
-            console.log("user check worked");
             return res
-                .json({ message: "password or username is incorrect" })
+                .json({
+                    message: "No existing user found with that email address",
+                })
                 .status(404);
         }
+
         const comparePassword = await bcrypt.compare(password, user.password); //used to compare the password
         if (!comparePassword) {
-            console.log("password check worked");
             return res.json("username or password is incorrect").status(400);
         }
-        res.status(200).json({ message: "user logged in", user });
+
+        //remove user's password in the response
+        const {password: _, ...userData} = user.toObject()
+
+        const token = generateToken(user._id)
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 3600000
+        })
+
+        res.status(200).json({ message: "user logged in", user: userData });
     } catch (error) {
         res.send(error);
     }
 };
 
-module.exports = { signup, login };
+const logout = async (req, res, next) => {
+    res.cookie('token', "", {
+        httpOnly: true,
+        secure: process.env.NOD_ENV === "production",
+        sameSite: "strict",
+        maxAge: 0
+    })
+    res.status(200).json({msg: "User successfully logged out"})
+}
+
+module.exports = { signup, login, logout };
